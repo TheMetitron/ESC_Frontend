@@ -1,0 +1,108 @@
+﻿@using Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Region</h3>
+<h3 style="color:green;">@msg</h3>
+<div>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown @bind-Value=@regionID Placeholder="Select Region" TValue=int Data=@lstRegionddl TextProperty="Display" ValueProperty="ID" Change=ddlRegion_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@create>
+        <table style="width:80%; margin-left:auto; margin-right:auto;">
+            <tr>
+                <td>
+                    Name: <br />
+                    <RadzenTextBox @bind-Value=@name />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" style="margin-left:auto; margin-right:auto;">
+                    <RadzenButton Text="Submit" Click=btnSubmit_click />
+                    <RadzenButton Text="Cancel" Click=btnCancel_click />
+                </td>
+            </tr>
+        </table>
+    </RadzenPanel>
+</div>
+@code
+{
+    [Parameter]
+    public bool create { get; set; } = false;
+    [Parameter]
+    public bool modify { get; set; } = false;
+
+    public List<ddlClass> lstRegionddl = new List<ddlClass>();
+    public List<Models.Region> lstRegion = new List<Models.Region>();
+    Models.Region region = new Models.Region();
+    public string name = "", msg = "";
+    public int regionID = -1;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Gets a list of all Regions ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetRegions");
+        resp.EnsureSuccessStatusCode();
+        lstRegionddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+    }
+
+    public async Task ddlRegion_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetRegion?regionID=" + regionID + "");
+        resp.EnsureSuccessStatusCode();
+        lstRegion = await resp.Content.ReadFromJsonAsync<List<Models.Region>>();
+        region = lstRegion[0];
+        name = region.Name;
+        create = true;
+        modify = false;
+    }
+
+    public async Task btnSubmit_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        region.Name = name;
+        if (regionID == -1)
+        {
+            var resp = await http.PostAsJsonAsync("ESC/CreateRegion", region);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = "Region Created";
+                create = false;
+                modify = true;
+                regionID = -1;
+                resp = await http.GetAsync("ESC/GetRegions");
+                resp.EnsureSuccessStatusCode();
+                lstRegionddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("ESC/UpdateRegion", region);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = "Region Updated";
+                create = false;
+                modify = true;
+                regionID = -1;
+                resp = await http.GetAsync("ESC/GetRegions");
+                resp.EnsureSuccessStatusCode();
+                lstRegionddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+    }
+
+    public void btnCancel_click()
+    {
+        name = "";
+        regionID = -1;
+    }
+}

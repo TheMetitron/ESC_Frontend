@@ -1,0 +1,118 @@
+﻿@using Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Department</h3>
+<h3 style="color:green;">@msg</h3>
+<div>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown @bind-Value=@departmentID Placeholder="Select Department" TValue=int Data=@lstDepartmentsddl TextProperty="Display" ValueProperty="ID" Change=ddlDepartment_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@create>
+        <table style="width:80%; margin-left:auto; margin-right:auto;">
+            <tr>
+                <td>
+                    Name: <br />
+                    <RadzenTextBox @bind-Value=@departmentName />
+                </td>
+                <td>
+                    Location:
+                    <RadzenDropDown @bind-Value=@locationID TValue=int Data=@lstLocations TextProperty="Display" ValueProperty="ID" />
+                </td>
+                <td colspan="3" style="margin-left:auto; margin-right:auto;">
+                    <RadzenButton Text="Submit" Click=btnSubmit_click />
+                    <RadzenButton Text="Cancel" Click=btnCancel_click />
+                </td>
+            </tr>
+        </table>
+    </RadzenPanel>
+</div>
+@code
+{
+    [Parameter]
+    public bool create { get; set; } = false;
+    [Parameter]
+    public bool modify { get; set; } = false;
+
+    public List<ddlClass> lstDepartmentsddl = new List<ddlClass>();
+    public List<ddlClass> lstLocations = new List<ddlClass>();
+    public List<Models.Department> lstDepartment = new List<Models.Department>();
+    public Models.Department department = new Models.Department();
+    public string departmentName = "", msg = "";
+    public int departmentID = -1, locationID = -1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Gets a list of all Deaprtments ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetDepartments");
+        resp.EnsureSuccessStatusCode();
+        lstDepartmentsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+        //Gets a list of Locations ddl
+        resp = await http.GetAsync("ESC/GetLocations");
+        resp.EnsureSuccessStatusCode();
+        lstLocations = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+    }
+
+    public async Task ddlDepartment_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetDepartment?depID=" + departmentID + "");
+        resp.EnsureSuccessStatusCode();
+        lstDepartment = await resp.Content.ReadFromJsonAsync<List<Models.Department>>();
+        department = lstDepartment[0];
+        departmentName = department.Name;
+        locationID = department.LocationID;
+        create = true;
+        modify = false;
+    }
+
+    public async Task btnSubmit_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        department.Name = departmentName;
+        department.LocationID = locationID;
+        if (departmentID == -1)
+        {
+            var resp = await http.PostAsJsonAsync("ESC/CreateDepartment", department);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = " Department Created";
+                create = false;
+                modify = true;
+                departmentID = -1;
+                resp = await http.GetAsync("ESC/GetDepartments");
+                resp.EnsureSuccessStatusCode();
+                lstDepartmentsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("ESC/UpdateDepartment", department);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = " Department Updated";
+                create = false;
+                modify = true;
+                departmentID = -1;
+                resp = await http.GetAsync("ESC/GetDepartments");
+                resp.EnsureSuccessStatusCode();
+                lstDepartmentsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+    }
+    public void btnCancel_click()
+    {
+        departmentName = "";
+        departmentID = -1;
+        locationID = -1;
+    }
+}

@@ -1,0 +1,219 @@
+﻿@rendermode RenderMode.InteractiveServer
+@using Models
+@using System.Data
+@using System.Text.Json
+@page "/"
+
+<div>
+    <div style="width:30%; margin-left:auto; margin-right:auto;">
+        <RadzenButton Text="View Existing Data" Click=@btnView_click />
+        <RadzenButton Text="Modifiy Data" Click=@btnModify_click />
+    </div>
+    <RadzenPanel Visible=@view>
+        <RadzenDataGrid TItem="Employees" Data=@lstEmployees>
+            <Columns>
+                <RadzenDataGridColumn Title="Employee ID" Property="Employee.ID" />
+                <RadzenDataGridColumn Title="Employee First Name" Property="Employee.FirstName" />
+                <RadzenDataGridColumn Title="Employee Last Name" Property="Employee.LastName" />
+                <RadzenDataGridColumn Title="Email" Property="Employee.Email" />
+                <RadzenDataGridColumn Title="Phone Number" Property="Employee.PhoneNumber" />
+                <RadzenDataGridColumn Title="Hire Date" Property="Employee.HireDate" />
+                <RadzenDataGridColumn Title="Dependent First Name" Property="Dependent.FirstName" />
+                <RadzenDataGridColumn Title="Dependent First Name" Property="Dependent.LastName" />
+                <RadzenDataGridColumn Title="Relationship" Property="Dependent.Relationship" />
+                <RadzenDataGridColumn Title="Job" Property="Job.Title" />
+                <RadzenDataGridColumn Title="Department" Property="Department.Name" />
+                <RadzenDataGridColumn Title="Address" Property="Location.StreetAddress" />
+                <RadzenDataGridColumn Title="City" Property="Location.City" />
+                <RadzenDataGridColumn Title="State | Province" Property="Location.StateProvince" />
+                <RadzenDataGridColumn Title="Country" Property="Country.Name" />
+                <RadzenDataGridColumn Title="Region" Property="Region.Name" />
+            </Columns>
+        </RadzenDataGrid>
+    </RadzenPanel>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown Placeholder="Select Modification" TValue=int ValueProperty="ID" TextProperty="Display" @bind-Value=@modSelect Data=@lstModOption Change=ddlMod_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@comps>
+    @if (modSelect == 1 || modSelect == 2)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Employee create=true modify=false />
+        }
+        else
+        {
+            <Employee create=false modify=true />
+        }
+    }
+    else if (modSelect == 3 || modSelect == 4)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Dependent create=true modify=false />
+        }
+        else
+        {
+            <Dependent create=false modify=true />
+        }
+
+    }
+    else if (modSelect == 5 || modSelect == 6)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Location create=true modify=false />
+        }
+        else
+        {
+            <Location create=false modify=true />
+        }
+
+    }
+    else if (modSelect == 7 || modSelect == 8)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Country create=true modify=false />
+        }
+        else
+        {
+            <Country create=false modify=true />
+        }
+
+    }
+    else if (modSelect == 9 || modSelect == 10)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Region create=true modify=false />
+        }
+        else
+        {
+            <Region create=false modify=true />
+        }
+
+    }
+    else if (modSelect == 11 || modSelect == 12)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Job create=true modify=false />
+        }
+        else
+        {
+            <Job create=false modify=true />
+        }
+
+    }
+    else if (modSelect == 13 || modSelect == 14)
+    {
+        @if (modSelect % 2 != 0)
+        {
+            <Department create=true modify=false />
+        }
+        else
+        {
+            <Department create=false modify=true />
+        }
+
+    }
+    </RadzenPanel>
+</div>
+
+@code
+{
+
+    public bool view = false, modify = false, comps = false;
+    public int modSelect;
+    public List<ddlClass> lstModOption = new List<ddlClass>();
+    public List<Employees> lstEmployees = new List<Employees>();
+    protected override async void OnInitialized()
+    {
+        lstModOption.Clear();
+        ddlClass dc = new ddlClass();
+        dc.Display = "Create New Employee";
+        dc.ID = 1;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Employee";
+        dc.ID = 2;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Create New Dependent";
+        dc.ID = 3;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Dependent";
+        dc.ID = 4;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Create new Location";
+        dc.ID = 5;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Location";
+        dc.ID = 6;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Create New Country";
+        dc.ID = 7;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Country";
+        dc.ID = 8;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Create New Region";
+        dc.ID = 9;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Region";
+        dc.ID = 10;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Create New Job";
+        dc.ID = 11;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Job";
+        dc.ID = 12;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Create New Department";
+        dc.ID = 13;
+        lstModOption.Add(dc);
+        dc = new ddlClass();
+        dc.Display = "Modify Existing Department";
+        dc.ID = 14;
+        lstModOption.Add(dc);
+    }
+
+
+    public void btnModify_click()
+    {
+        view = false;
+        modify = true;
+        comps = false;
+        modSelect = -1;
+    }
+
+    public async Task btnView_click()
+    {
+        view = true;
+        modify = false;
+        comps = false;
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetAllData");
+        resp.EnsureSuccessStatusCode();
+        lstEmployees = await resp.Content.ReadFromJsonAsync<List<Employees>>();
+    }
+
+    public void ddlMod_click()
+    {
+        view = false;
+        modify = false;
+        comps = true;
+    }
+}

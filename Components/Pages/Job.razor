@@ -1,0 +1,122 @@
+﻿@using Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Job</h3>
+<h3 style="color:green;">@msg</h3>
+<div>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown Placeholder="Select Job" @bind-Value=@jobID TValue=int Data=@lstJobsddl TextProperty="Display" ValueProperty="ID" Change=ddlJob_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@create>
+        <table style="width:80%; margin-left:auto; margin-right:auto;">
+            <tr>
+                <td>
+                    Title: <br />
+                    <RadzenTextBox @bind-Value=@jobTitle />
+                </td>
+                <td>
+                    Min Salary:
+                    <RadzenNumeric  @bind-Value=@minSalary Step=.01 />
+                </td>
+                <td>
+                    Max Salary:
+                    <RadzenNumeric @bind-Value=@maxSalary Step=.01 />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" style="margin-left:auto; margin-right:auto;">
+                    <RadzenButton Text="Submit" Click=btnSubmit_click />
+                    <RadzenButton Text="Cancel" Click=btnCancel_click />
+                </td>
+            </tr>
+        </table>
+    </RadzenPanel>
+</div>
+@code 
+{
+    [Parameter]
+    public bool create { get; set; } = false;
+    [Parameter]
+    public bool modify { get; set; } = false;
+
+    public List<ddlClass> lstJobsddl = new List<ddlClass>();
+    public List<Models.Job> lstJob = new List<Models.Job>();
+    public Models.Job job = new Models.Job();
+    public string jobTitle = "", msg = "";
+    public decimal minSalary, maxSalary;
+    public int jobID = -1;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Gets a list of all Dependents ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetJobs");
+        resp.EnsureSuccessStatusCode();
+        lstJobsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+    }
+
+    public async Task ddlJob_click()
+    {
+        //Gets a list of all Dependents ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetJob?jobID=" + jobID + "");
+        resp.EnsureSuccessStatusCode();
+        lstJob = await resp.Content.ReadFromJsonAsync<List<Models.Job>>();
+        job = lstJob[0];
+        jobTitle = job.Title;
+        minSalary = job.MinSalary;
+        maxSalary = job.MaxSalary;
+        create = true;
+        modify = false;
+    }
+    public async Task btnSubmit_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        job.Title = jobTitle;
+        job.MinSalary = minSalary;
+        job.MaxSalary = maxSalary;
+        if (jobID == -1)
+        {
+            var resp = await http.PostAsJsonAsync("ESC/CreateJob", job);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = " Job Created";
+                create = false;
+                modify = true;
+                jobID = -1;
+                resp = await http.GetAsync("ESC/GetJobs");
+                resp.EnsureSuccessStatusCode();
+                lstJobsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("ESC/UpdateJob", job);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = " Job Updated";
+                create = false;
+                modify = true;
+                jobID = -1;
+                resp = await http.GetAsync("ESC/GetJobs");
+                resp.EnsureSuccessStatusCode();
+                lstJobsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+    }
+    public void btnCancel_click()
+    {
+        jobID = -1;
+        jobTitle = "";
+        minSalary = 0;
+        maxSalary = 0;
+    }
+}

@@ -1,0 +1,138 @@
+﻿@using Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Dependent</h3>
+<h3 style="color:green;">@msg</h3>
+
+<div>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown Placeholder="Select Dependent" @bind-Value=@dependentID TValue=int Data=@lstDependentsddl TextProperty="Display" ValueProperty="ID" Change=ddlDependent_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@create>
+        <table style="width:80%; margin-left:auto; margin-right:auto;">
+            <tr>
+                <td colspan="3">
+                    Employee Related To:
+                    <RadzenDropDown Placeholder="Select Employee Relation" @bind-Value=@employeeID TValue=int Data=@lstEmployees TextProperty="Display" ValueProperty="ID" />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    First Name: <br />
+                    <RadzenTextBox @bind-Value=@FirstName />
+                </td>
+                <td>
+                    Last Name: <br />
+                    <RadzenTextBox @bind-Value=@LastName />
+                </td>
+                <td>
+                    Relationship:
+                    <RadzenTextBox @bind-Value=@Relationship />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" style="margin-left:auto; margin-right:auto;">
+                    <RadzenButton Text="Submit" Click=btnSubmit_click />
+                    <RadzenButton Text="Cancel" Click=btnCancel_click />
+                </td>
+            </tr>
+        </table>
+    </RadzenPanel>
+</div>
+@code
+{
+    [Parameter]
+    public bool create { get; set; } = false;
+    [Parameter]
+    public bool modify { get; set; } = false;
+
+    public List<ddlClass> lstDependentsddl = new List<ddlClass>();
+    public List<ddlClass> lstEmployees = new List<ddlClass>();
+    public List<Models.Dependent> lstDependent = new List<Models.Dependent>();
+    public Models.Dependent dependent = new Models.Dependent();
+    public string FirstName = "", LastName = "", Relationship = "", msg = "";
+    public int dependentID = -1, employeeID = -1;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Gets a list of all Dependents ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetDependents");
+        resp.EnsureSuccessStatusCode();
+        lstDependentsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+        //Gets a list of Employees ddl
+        resp = await http.GetAsync("ESC/GetEmployees");
+        resp.EnsureSuccessStatusCode();
+        lstEmployees = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+    }
+
+    public async Task ddlDependent_click()
+    {
+        //Gets a list of all Dependents ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetDependent?depID=" + dependentID + "");
+        resp.EnsureSuccessStatusCode();
+        lstDependent = await resp.Content.ReadFromJsonAsync<List<Models.Dependent>>();
+        dependent = lstDependent[0];
+        employeeID = dependent.EmployeeID;
+        FirstName = dependent.FirstName;
+        LastName = dependent.LastName;
+        Relationship = dependent.Relationship;
+        create = true;
+        modify = false;
+    }
+
+    public async Task btnSubmit_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        dependent.FirstName = FirstName;
+        dependent.LastName = LastName;
+        dependent.Relationship = Relationship;
+        dependent.EmployeeID = employeeID;
+        if (dependentID == -1)
+        {
+            var resp = await http.PostAsJsonAsync("ESC/CreateDependent", dependent);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = "Dependent Created";
+                create = false;
+                modify = true;
+                dependentID = -1;
+                resp = await http.GetAsync("ESC/GetDependents");
+                resp.EnsureSuccessStatusCode();
+                lstDependentsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("ESC/UpdateDependent", dependent);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = " Dependent Updated";
+                create = false;
+                modify = true;
+                dependentID = -1;
+                resp = await http.GetAsync("ESC/GetDependents");
+                resp.EnsureSuccessStatusCode();
+                lstDependentsddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+    }
+
+    public void btnCancel_click()
+    {
+        FirstName = "";
+        LastName = "";
+        Relationship = "";
+        employeeID = -1;
+    }
+}

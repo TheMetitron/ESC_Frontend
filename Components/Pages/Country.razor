@@ -1,0 +1,110 @@
+﻿@using Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Country</h3>
+<h3 style="color:green;">@msg</h3>
+<div>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown TValue=string @bind-Value=@countryID Data=@lstCountriesddl TextProperty="Display" ValueProperty="ID" Change=ddlCountry_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@create>
+        <table style="width:80%; margin-left:auto; margin-right:auto;">
+            <tr>
+                <td>
+                    Name: <br />
+                    <RadzenTextBox @bind-Value=@countryName />
+                </td>
+                <td>
+                    Region:
+                    <RadzenDropDown Placeholder="Select Region" @bind-Value=@regionID TValue=int Data=@lstRegions TextProperty="Display" ValueProperty="ID" />
+                </td>
+                <td colspan="3" style="margin-left:auto; margin-right:auto;">
+                    <RadzenButton Text="Submit" Click=btnSubmit_click />
+                    <RadzenButton Text="Cancel" Click=btnCancel_click />
+                </td>
+            </tr>
+        </table>
+    </RadzenPanel>
+</div>
+@code
+{
+    [Parameter]
+    public bool create { get; set; } = false;
+    [Parameter]
+    public bool modify { get; set; } = false;
+
+    public List<ddlClass> lstRegions = new List<ddlClass>();
+    public List<ddlClassSpecial> lstCountriesddl = new List<ddlClassSpecial>();
+    public List<Models.Country> lstCountry = new List<Models.Country>();
+    public Models.Country country = new Models.Country();
+    public string countryName = "", countryID = "", msg = "";
+    public int regionID = -1;
+
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Gets a list of all countries ddl
+
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetCountries");
+        resp.EnsureSuccessStatusCode();
+        lstCountriesddl = await resp.Content.ReadFromJsonAsync<List<ddlClassSpecial>>();
+
+        //Gets a list of regions ddl
+        resp = await http.GetAsync("ESC/GetRegions");
+        resp.EnsureSuccessStatusCode();
+        lstRegions = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+    }
+
+    public async Task ddlCountry_click()
+    {
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetCountry?countryID=" + countryID + "");
+        resp.EnsureSuccessStatusCode();
+        lstCountry = await resp.Content.ReadFromJsonAsync<List<Models.Country>>();
+        country = lstCountry[0];
+        countryName = country.Name;
+        regionID = country.RegionID;
+        create = true;
+        modify = false;
+    }
+
+    public async Task btnSubmit_click()
+    {
+        //Country will not be able to be inserted into as getting a full list of country abreviations for ID is beyond the scope I think.
+        //I would change the table to have a proper ID column and change the current id to abreviation
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://localhost:44329/");
+        country.Name = countryName;
+        country.RegionID = regionID;
+        if(countryID == "")
+        {
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("ESC/UpdateCountry", country);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if(ret == "1")
+            {
+                msg = " Country Updated";
+                create = false;
+                modify = true;
+                countryID = "";
+                resp = await http.GetAsync("ESC/GetCountries");
+                resp.EnsureSuccessStatusCode();
+                lstCountriesddl = await resp.Content.ReadFromJsonAsync<List<ddlClassSpecial>>();
+
+            }
+        }
+    }
+    public void btnCancel_click()
+    {
+        countryName = "";
+        countryID = "";
+        regionID = -1;
+    }
+}

@@ -1,0 +1,179 @@
+﻿@using Models
+@rendermode RenderMode.InteractiveServer
+
+<h3>Employee Information</h3>
+<h3 style="color:green;">@msg</h3>
+<div>
+    <RadzenPanel Visible=@modify>
+        <RadzenDropDown TValue=int @bind-Value=@employeeID Placeholder="Select Employee to Modify" Data=@lstEmployeesddl TextProperty="Display" ValueProperty="ID" Change=ddlEmployeeSelect_click />
+    </RadzenPanel>
+    <RadzenPanel Visible=@create>
+        <table style="margin-left:auto; margin-right:auto; width:80%;">
+            <tr>
+                <td>
+                    First Name: <br /> 
+                    <RadzenTextBox @bind-value=@fName />
+                </td>
+                <td>
+                    Last Name: <br />  
+                    <RadzenTextBox @bind-value=@lName />
+                </td>
+                <td>
+                    Hire Date: <br />  
+                    <RadzenTextBox @bind-value=@hireDate />
+                </td>
+            </tr>
+            <tr>
+                <td>
+                    Email: <br />  
+                    <RadzenTextBox @bind-value=@email />
+                </td>
+                <td>
+                    Phone: <br />  
+                    <RadzenTextBox @bind-value=@phone />
+                </td>
+                <td>
+                    Salary: <br />
+                    <RadzenNumeric @bind-Value=@salary Step=.01 />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="2">
+                    Department: <br />
+                    <RadzenDropDown @bind-Value=@departmentID Placeholder="Select Department" TValue=int Data=@lstDepartments TextProperty="Display" ValueProperty="ID" />
+                </td>
+                <td>
+                    Job: <br />
+                    <RadzenDropDown @bind-Value=@jobID Placeholder="Select Job" TValue=int Data=@lstJobs TextProperty="Display" ValueProperty="ID" />
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" style="text-align:center">
+                    <RadzenButton Text="Submit" Click=@btnSubmit_click />
+                    <RadzenButton Text="Cancel" Click=@btnCancel_click />
+                </td>
+            </tr>
+        </table>
+    </RadzenPanel>
+</div>
+@code
+{
+    [Parameter]
+    public bool create { get; set; } = false;
+    [Parameter]
+    public bool modify { get; set; } = false;
+
+    public List<ddlClass> lstEmployeesddl = new List<ddlClass>();
+    public List<Models.Employee> lstEmployee = new List<Models.Employee>();
+    public Models.Employee employee = new Models.Employee();
+    public List<ddlClass> lstJobs = new List<ddlClass>();
+    public List<ddlClass> lstDepartments = new List<ddlClass>();
+    public string fName = "", lName = "", email = "", phone = "", hireDate = "", msg = "";
+    public int jobID = -1, departmentID = -1, employeeID = -1;
+    public decimal salary;
+
+    protected override async Task OnInitializedAsync()
+    {
+        //Gets a list of all employees ddl
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetEmployees");
+        resp.EnsureSuccessStatusCode();
+        lstEmployeesddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+        //Gets a list of Departments
+        resp = await http.GetAsync("ESC/GetDepartments");
+        resp.EnsureSuccessStatusCode();
+        lstDepartments = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+        //Gets a list of Jobs
+        resp = await http.GetAsync("ESC/GetJobs");
+        resp.EnsureSuccessStatusCode();
+        lstJobs = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+
+    }
+
+    public async Task btnSubmit_click()
+    {
+        //Manager ID is being left null intentionally.  I do not have business rules
+        //for what jobs are managers
+        //To correct this I would add a boolean to the Jobs table 
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        employee.FirstName = fName;
+        employee.LastName = lName;
+        employee.Email = email;
+        employee.PhoneNumber = phone;
+        employee.HireDate = hireDate;
+        employee.JobID = jobID;
+        employee.Salary = salary;
+        employee.DepartmentID = departmentID;
+        if (employeeID == -1)
+        {
+            var resp = await http.PostAsJsonAsync("ESC/CreateEmployee", employee);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = "Employee Created";
+                create = false;
+                modify = true;
+                employeeID = -1;
+                resp = await http.GetAsync("ESC/GetEmployees");
+                resp.EnsureSuccessStatusCode();
+                lstEmployeesddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+        else
+        {
+            var resp = await http.PostAsJsonAsync("ESC/UpdateEmployee", employee);
+            resp.EnsureSuccessStatusCode();
+            string ret = await resp.Content.ReadAsStringAsync();
+            if (ret == "1")
+            {
+                msg = "Employee Updated";
+                create = false;
+                modify = true;
+                employeeID = -1;
+                resp = await http.GetAsync("ESC/GetEmployees");
+                resp.EnsureSuccessStatusCode();
+                lstEmployeesddl = await resp.Content.ReadFromJsonAsync<List<ddlClass>>();
+            }
+        }
+    }
+
+    public void btnCancel_click()
+    {
+        fName = "";
+        lName = "";
+        email = "";
+        phone = "";
+        hireDate = "";
+        salary = 0;
+        jobID = -1;
+        departmentID = -1;
+        employeeID = -1;
+    }
+
+    public async Task ddlEmployeeSelect_click()
+    {
+        //Gets a single employee data
+        HttpClient http = new HttpClient();
+        http.BaseAddress = new Uri("https://escassessmentapi.azure-api.net/");
+        var resp = await http.GetAsync("ESC/GetEmployee?empID=" + employeeID +"");
+        resp.EnsureSuccessStatusCode();
+        lstEmployee = await resp.Content.ReadFromJsonAsync<List<Models.Employee>>();
+        employee = lstEmployee[0];
+        fName = employee.FirstName;
+        lName = employee.LastName;
+        email = employee.Email;
+        phone = employee.PhoneNumber;
+        salary = employee.Salary;
+        jobID = employee.JobID;
+        departmentID = employee.DepartmentID;
+        hireDate = employee.HireDate.ToString();
+        create = true;
+        modify = false;
+    }
+
+}
